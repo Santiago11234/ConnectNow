@@ -8,6 +8,7 @@ interface Props {
   layout: LayoutData
   visible: boolean[]
   selectedIdx: number
+  meIdx: number
   matchIdxs: number[]
   onSelect: (id: string) => void
 }
@@ -15,7 +16,7 @@ interface Props {
 interface VP { zoom: number; panX: number; panY: number }
 const PAD = 48
 
-export function Constellation({ layout, visible, selectedIdx, matchIdxs, onSelect }: Props) {
+export function Constellation({ layout, visible, selectedIdx, meIdx, matchIdxs, onSelect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const skyRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null)
@@ -59,9 +60,10 @@ export function Constellation({ layout, visible, selectedIdx, matchIdxs, onSelec
       intraEdges: intra, bridgeEdges: bridges.edges, bridgeNodes: bridges.nodes,
       selected: selectedIdx, matches: matchIdxs, hover: hover?.idx ?? -1,
       selectedName: layout.participants[selectedIdx]?.name ?? '',
+      meIdx, meName: layout.participants[meIdx]?.name ?? '',
     }
     drawScene(ctx, scene, project, vp.zoom)
-  }, [size, vp, coords, clusterIds, bridge, visible, intra, bridges, selectedIdx, matchIdxs, hover, layout, project])
+  }, [size, vp, coords, clusterIds, bridge, visible, intra, bridges, selectedIdx, meIdx, matchIdxs, hover, layout, project])
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return

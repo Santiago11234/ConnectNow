@@ -1,9 +1,11 @@
 'use client'
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useSyncExternalStore } from 'react'
 import { api, type ExplainData, type Participant } from '@/lib/api'
 import { topMatches, type Match, type Mode, type PersonMeta } from '@/lib/scoring'
 import { reasonFor, rowStats } from '@/lib/ego'
 import { currentUserIndex } from '@/lib/session'
+import { subscribe, getSnapshot, getServerSnapshot, saveIntro, draftMessage } from '@/lib/connections'
+import { Send, Check } from 'lucide-react'
 import { EgoView } from './EgoView'
 
 interface Props {
@@ -19,8 +21,14 @@ interface Props {
 const TOP_N = 24
 
 export function FindMyPeople({ people, meta, visible, decoded, weights, mode, onSelect }: Props) {
-  const [active, setActive] = useState(-1)
+  // Hover browses, click pins. Without the pin, moving the mouse off a node
+  // while composing would swap the person under the open draft.
+  const [hovered, setHovered] = useState(-1)
+  const [pinned, setPinned] = useState(-1)
+  const active = pinned >= 0 ? pinned : hovered
   const [explains, setExplains] = useState<Record<string, ExplainData>>({})
+  const intros = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const [draft, setDraft] = useState<string | null>(null)
 
   // This view belongs to the signed-in user; there is no one else to pick.
   const meIdx = useMemo(() => currentUserIndex(people), [people])
@@ -47,6 +55,9 @@ export function FindMyPeople({ people, meta, visible, decoded, weights, mode, on
   const mePerson = people[meIdx]
   const activePerson = people[active]
   const explain = mePerson && activePerson ? explains[`${mePerson.id}|${activePerson.id}`] : undefined
+  const sent = activePerson ? intros[activePerson.id] : undefined
+
+  const sentIds = useMemo(() => new Set(Object.keys(intros)), [intros])
 
   const stats = useMemo(() => rowStats(decoded, meIdx, visible), [decoded, meIdx, visible])
 
@@ -82,8 +93,9 @@ export function FindMyPeople({ people, meta, visible, decoded, weights, mode, on
             activeIdx={active}
             visible={visible}
             decoded={decoded}
-            onSelect={idx => { setActive(idx); const p = people[idx]; if (p) onSelect(p.id) }}
-            onHover={idx => { if (idx >= 0) setActive(idx) }}
+            sentIds={sentIds}
+            onSelect={idx => { setPinned(idx); setDraft(null); const p = people[idx]; if (p) onSelect(p.id) }}
+            onHover={setHovered}
           />
         )}
       </div>
@@ -115,6 +127,60 @@ export function FindMyPeople({ people, meta, visible, decoded, weights, mode, on
               </>
             ) : (
               <div className="faint">Loading explanation…</div>
+            )}
+
+            {sent ? (
+              <div className="intro-sent">
+                <Check size={14} strokeWidth={1.5} />
+                <span>Intro sent</span>
+                <p className="intro-sent-body">{sent.message}</p>
+              </div>
+            ) : pinned < 0 ? (
+              <div className="faint intro-hint">Click this match to send an intro</div>
+            ) : draft === null ? (
+              <button
+                className="btn-primary intro-btn"
+                onClick={() =>
+                  setDraft(
+                    draftMessage(
+                      mePerson?.name ?? '',
+                      activePerson.name,
+                      activeReason?.evidence ?? [],
+                      explain?.icebreaker,
+                    ),
+                  )
+                }
+              >
+                <Send size={14} strokeWidth={1.5} /> Send intro
+              </button>
+            ) : (
+              <div className="intro-compose">
+                <textarea
+                  className="cn-input intro-textarea"
+                  rows={5}
+                  value={draft}
+                  aria-label={`Message to ${activePerson.name}`}
+                  onChange={e => setDraft(e.target.value)}
+                />
+                <div className="intro-actions">
+                  <button className="btn-quiet" onClick={() => setDraft(null)}>Cancel</button>
+                  <button
+                    className="btn-primary"
+                    disabled={!draft.trim()}
+                    onClick={() => {
+                      saveIntro({
+                        toId: activePerson.id,
+                        toName: activePerson.name,
+                        message: draft.trim(),
+                        sentAt: new Date().toISOString(),
+                      })
+                      setDraft(null)
+                    }}
+                  >
+                    <Send size={14} strokeWidth={1.5} /> Send
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}
