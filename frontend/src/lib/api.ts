@@ -12,6 +12,9 @@ export interface Participant {
   is_synthetic: boolean
   internships: { company: string; role: string; industry?: string; year: number }[]
   skills: string[]
+  dev_groups: string[]
+  hackathons: string[]
+  involvement: string[]
   answers: Record<string, string>
   teammates: string[]
   friends: string[]

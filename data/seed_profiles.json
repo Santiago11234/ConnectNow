@@ -1,0 +1,256 @@
+{
+  "_note": "Hardcoded cohort loaded alongside data/synthetic.json. The first three are real people supplied by the operator and carry is_synthetic:false; their fields contain only what was actually provided. Everyone below them is invented to give the demo a populated neighbourhood and is flagged is_synthetic:true.",
+  "participants": [
+    {
+      "id": "v001",
+      "name": "Victoria Liu",
+      "school": "Carnegie Mellon",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "gpa_band": "3.5-3.79",
+      "is_synthetic": false,
+      "skills": ["Python", "C", "C++", "JavaScript", "HTML/CSS", "PostgreSQL", "Docker", "Kubernetes", "Django", "Bash"],
+      "internships": [
+        {"company": "ServiceNow", "role": "Software Engineer Intern, AI Control Tower", "industry": "Big Tech", "year": 2026},
+        {"company": "Turing", "role": "Software Developer", "industry": "Startup", "year": 2025}
+      ],
+      "dev_groups": ["ScottyLabs"],
+      "hackathons": [],
+      "involvement": ["Teaching Assistant"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Machine learning and distributed systems. My concentration is in machine learning, and I've taken Distributed Systems, Parallel Data Structures and Algorithms, Computer Systems, and Human-AI Interaction.",
+        "What do you want to build this weekend?": "Something that combines machine learning with real infrastructure. I work on AI Control Tower at ServiceNow, so I like systems where the model is only half the problem and deployment is the other half.",
+        "What's your favorite tool or technology, and why?": "Docker and Kubernetes. I like being able to reason about a system end to end, and containers make the boundaries explicit. I also write a lot of Python and C.",
+        "Tell us a fun fact about yourself.": "I'm a TA for 15-150, Principles of Functional Programming, and I build with ScottyLabs."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v004", "v005", "v006", "p0043", "p0249", "p0137"]
+    },
+    {
+      "id": "v002",
+      "name": "Rohan Radadiya",
+      "school": "UVA",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": false,
+      "skills": ["Python", "Go", "Docker", "Kubernetes", "PostgreSQL"],
+      "internships": [
+        {"company": "ServiceNow", "role": "Software Engineer Intern", "industry": "Big Tech", "year": 2025}
+      ],
+      "dev_groups": ["ACM"],
+      "hackathons": [],
+      "involvement": ["Club Sports"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Backend and infrastructure work. I interned at ServiceNow last summer.",
+        "What do you want to build this weekend?": "Something backend-heavy with a clean deployment story.",
+        "What's your favorite tool or technology, and why?": "Go and Kubernetes for anything that has to run reliably.",
+        "Tell us a fun fact about yourself.": "I climb."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v003", "v004", "v007"]
+    },
+    {
+      "id": "v003",
+      "name": "Santiago Espinoza",
+      "school": "UT Austin",
+      "major": "Computer Science",
+      "year": "Sophomore",
+      "grad_year": 2029,
+      "is_synthetic": false,
+      "skills": ["Python", "JavaScript", "React", "Docker", "PostgreSQL"],
+      "internships": [
+        {"company": "ServiceNow", "role": "Software Engineer Intern", "industry": "Big Tech", "year": 2025}
+      ],
+      "dev_groups": ["ACM"],
+      "hackathons": [],
+      "involvement": ["Intramural Sports", "Club Sports"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Full-stack and platform engineering. I interned at ServiceNow last summer.",
+        "What do you want to build this weekend?": "A web app I'd actually keep using afterwards.",
+        "What's your favorite tool or technology, and why?": "React and Postgres, because I can get something real working fast.",
+        "Tell us a fun fact about yourself.": "I climb and play ultimate frisbee."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v002", "v004", "v008"]
+    },
+
+    {
+      "id": "v004",
+      "name": "Priya Raghavan",
+      "school": "Carnegie Mellon",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": true,
+      "skills": ["Python", "PyTorch", "scikit-learn", "Docker", "PostgreSQL"],
+      "internships": [
+        {"company": "ServiceNow", "role": "Machine Learning Intern", "industry": "Big Tech", "year": 2025}
+      ],
+      "dev_groups": ["ScottyLabs", "ACM"],
+      "hackathons": ["HackMIT"],
+      "involvement": ["Teaching Assistant", "Undergraduate Research"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Applied machine learning, model evaluation, and the infrastructure that makes training reproducible.",
+        "What do you want to build this weekend?": "A tool that makes it obvious when a model is quietly getting worse in production.",
+        "What's your favorite tool or technology, and why?": "PyTorch, with Docker underneath so experiments actually reproduce.",
+        "Tell us a fun fact about yourself.": "I TA a functional programming course and build with ScottyLabs."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v001", "v002", "v003", "v005", "v006", "p0249"]
+    },
+    {
+      "id": "v005",
+      "name": "Marcus Feldman",
+      "school": "Carnegie Mellon",
+      "major": "Computer Science",
+      "year": "Senior",
+      "grad_year": 2027,
+      "is_synthetic": true,
+      "skills": ["Go", "Rust", "Kubernetes", "gRPC", "Linux", "C++"],
+      "internships": [
+        {"company": "Stripe", "role": "Infrastructure Intern", "industry": "Startup", "year": 2025}
+      ],
+      "dev_groups": ["ScottyLabs"],
+      "hackathons": ["PennApps"],
+      "involvement": ["Teaching Assistant"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Distributed systems, consensus protocols, and making infrastructure boring and predictable.",
+        "What do you want to build this weekend?": "A small distributed key-value store that survives having nodes killed at random.",
+        "What's your favorite tool or technology, and why?": "Rust and Kubernetes. I like systems where failure modes are explicit.",
+        "Tell us a fun fact about yourself.": "I've read the Raft paper more times than I'd like to admit."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v001", "v004", "v006", "p0137"]
+    },
+    {
+      "id": "v006",
+      "name": "Grace Lin",
+      "school": "Carnegie Mellon",
+      "major": "Computational Media",
+      "year": "Sophomore",
+      "grad_year": 2029,
+      "is_synthetic": true,
+      "skills": ["TypeScript", "React", "Next.js", "Tailwind", "PostgreSQL"],
+      "internships": [],
+      "dev_groups": ["ScottyLabs", "Web Dev Club"],
+      "hackathons": ["HackGT 12"],
+      "involvement": ["Campus Tour Guide"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Web apps, design systems, and developer tools that feel good to use.",
+        "What do you want to build this weekend?": "A front end for something my friends are already hacking on.",
+        "What's your favorite tool or technology, and why?": "Next.js and Tailwind, because I can iterate on an idea in an evening.",
+        "Tell us a fun fact about yourself.": "I joined ScottyLabs my first semester and never left."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v001", "v004", "v005"]
+    },
+    {
+      "id": "v007",
+      "name": "Dev Shah",
+      "school": "UVA",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": true,
+      "skills": ["Go", "Python", "Kubernetes", "Linux", "PostgreSQL"],
+      "internships": [
+        {"company": "Capital One", "role": "Software Engineering Intern", "industry": "Finance", "year": 2025}
+      ],
+      "dev_groups": ["ACM", "Open Source Club"],
+      "hackathons": ["HackDuke"],
+      "involvement": ["Club Sports"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Backend services, observability, and open source infrastructure.",
+        "What do you want to build this weekend?": "A service mesh demo that a normal person could actually follow.",
+        "What's your favorite tool or technology, and why?": "Go, because the code I write at 2am still reads fine the next morning.",
+        "Tell us a fun fact about yourself.": "Most of my weekends are spent at the climbing gym."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v002", "v008"]
+    },
+    {
+      "id": "v008",
+      "name": "Amara Okonkwo",
+      "school": "UT Austin",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": true,
+      "skills": ["Python", "PyTorch", "NumPy", "pandas", "scikit-learn"],
+      "internships": [
+        {"company": "Scale AI", "role": "Machine Learning Intern", "industry": "Startup", "year": 2025}
+      ],
+      "dev_groups": ["AI Club", "ACM"],
+      "hackathons": ["ShellHacks"],
+      "involvement": ["Intramural Sports", "Undergraduate Research"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Machine learning research, data quality, and evaluation that actually predicts real performance.",
+        "What do you want to build this weekend?": "A benchmark that's hard to game.",
+        "What's your favorite tool or technology, and why?": "PyTorch and pandas, the two things I open every single day.",
+        "Tell us a fun fact about yourself.": "I play ultimate frisbee and climb on weekends."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v003", "v007"]
+    },
+    {
+      "id": "v009",
+      "name": "Ethan Brooks",
+      "school": "Carnegie Mellon",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": true,
+      "skills": ["Python", "PyTorch", "Figma", "User Research", "scikit-learn"],
+      "internships": [
+        {"company": "Adobe", "role": "Research Intern", "industry": "Big Tech", "year": 2025}
+      ],
+      "dev_groups": ["AI Club"],
+      "hackathons": ["HackGT 12"],
+      "involvement": ["Undergraduate Research", "Teaching Assistant"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "Human-AI interaction: how people actually build trust in a model's output, and where that breaks down.",
+        "What do you want to build this weekend?": "An interface that shows its own uncertainty without overwhelming anyone.",
+        "What's your favorite tool or technology, and why?": "PyTorch for the modelling, Figma for figuring out what the thing should feel like.",
+        "Tell us a fun fact about yourself.": "I took Human-AI Interaction and it rerouted my whole degree."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v004", "p0249"]
+    },
+    {
+      "id": "v010",
+      "name": "Sofia Ramos",
+      "school": "Georgia Tech",
+      "major": "Computer Science",
+      "year": "Junior",
+      "grad_year": 2028,
+      "is_synthetic": true,
+      "skills": ["Python", "PyTorch", "Docker", "Kubernetes", "Linux"],
+      "internships": [
+        {"company": "ServiceNow", "role": "Platform Engineering Intern", "industry": "Big Tech", "year": 2025}
+      ],
+      "dev_groups": ["Machine Learning Club"],
+      "hackathons": ["HackGT 12", "Bitcamp"],
+      "involvement": ["Club Sports"],
+      "answers": {
+        "What topics or technologies are you most excited about?": "ML platform work: serving, scaling and monitoring models once they leave the notebook.",
+        "What do you want to build this weekend?": "A deployment pipeline that takes a model from notebook to endpoint in one command.",
+        "What's your favorite tool or technology, and why?": "Kubernetes. Once you understand it, a lot of hard problems become boring.",
+        "Tell us a fun fact about yourself.": "I climb, mostly bouldering."
+      },
+      "team_id": null,
+      "teammates": [],
+      "friends": ["v008"]
+    }
+  ]
+}

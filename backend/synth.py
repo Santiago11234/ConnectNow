@@ -267,6 +267,53 @@ QUESTIONS = {
     "fun_fact": "Tell us a fun fact about yourself.",
 }
 
+# --------------------------------------------------------------------------
+# Campus life
+#
+# Club names are stored unscoped ("Robotics Club"), not as "GT Robotics Club".
+# features/devgroups.py scopes them: the same club at the same school means you
+# already share a room, the same club at a different school is a shared
+# subculture worth an introduction. Baking the school into the string would
+# collapse that distinction and kill every cross-school match.
+# --------------------------------------------------------------------------
+GENERAL_ORGS = {  # open to anyone, weakly archetype-linked
+    "ACM": 10, "IEEE": 7, "GDSC": 8, "Society of Women Engineers": 5,
+    "NSBE": 4, "SHPE": 3, "Hackathon Club": 9, "Open Source Club": 5,
+}
+
+ARCHETYPE_ORGS = {
+    "ml_research": ["AI Club", "Machine Learning Club", "Data Science Club"],
+    "data_viz": ["Data Science Club", "Analytics Club", "Info Design Collective"],
+    "hardware": ["Robotics Club", "IEEE Hardware Team", "Makerspace Collective"],
+    "robotics": ["Robotics Club", "Autonomous Vehicle Team", "RoboCup Team"],
+    "security": ["Cyber Defense Team", "CTF Club", "Security Club"],
+    "games_graphics": ["Game Dev Club", "Graphics & Animation Club", "VR Club"],
+    "design_ux": ["Design Club", "UX Collective", "Product Design Studio"],
+    "quant_fintech": ["Quant Trading Club", "Fintech Club", "Investment Group"],
+    "web3_systems": ["Blockchain Club", "Systems Club", "Distributed Computing Group"],
+    "bio_health": ["Biomedical Engineering Society", "Health Tech Club", "Bioinformatics Group"],
+    "climate_social": ["Climate Tech Club", "Engineers Without Borders", "Civic Tech Collective"],
+    "fullstack": ["Web Dev Club", "Startup Club", "Product Builders"],
+    "mobile": ["Mobile Dev Club", "iOS Club", "App Builders"],
+}
+
+# Regional weighting: southeast schools feed the southeast circuit.
+SOUTHEAST = {
+    "Georgia Tech", "Emory", "UGA", "Georgia State", "Kennesaw State", "SCAD",
+    "Spelman", "Morehouse", "Clemson", "Auburn", "Vanderbilt", "UF",
+    "Florida State", "Alabama", "Georgia Southern", "Mercer", "Duke",
+    "UNC Chapel Hill", "NC State", "Virginia Tech",
+}
+SOUTHEAST_HACKATHONS = ["HackGT 11", "HackGT 12", "Bitcamp", "VandyHacks", "HackDuke", "ShellHacks"]
+NATIONAL_HACKATHONS = ["MHacks", "PennApps", "HackMIT", "Hack the North", "TreeHacks", "CalHacks"]
+
+INVOLVEMENT = {
+    "Undergraduate Research": 14, "Teaching Assistant": 12, "Greek Life": 10,
+    "Intramural Sports": 11, "Club Sports": 6, "Student Government": 4,
+    "A Cappella": 3, "Marching Band": 3, "Entrepreneurship Club": 7,
+    "Resident Advisor": 4, "Campus Tour Guide": 3, "Volunteer Tutoring": 6,
+}
+
 
 # --------------------------------------------------------------------------
 # Helpers
@@ -274,6 +321,48 @@ QUESTIONS = {
 def wchoice(rng, weights: dict):
     keys = list(weights)
     return rng.choices(keys, weights=[weights[k] for k in keys], k=1)[0]
+
+
+def make_dev_groups(rng, arch_key, year_label):
+    """1-3 orgs: mostly the ones this archetype gravitates to, plus a general
+    chapter or two. Upperclassmen have had time to join more."""
+    pool = ARCHETYPE_ORGS.get(arch_key, [])
+    groups = set()
+    n_specific = rng.choices([0, 1, 2], weights=[15, 55, 30])[0]
+    for _ in range(n_specific):
+        if pool:
+            groups.add(rng.choice(pool))
+    n_general = rng.choices([0, 1, 2], weights=[35, 45, 20])[0]
+    if year_label in ("Freshman",):
+        n_general = min(n_general, 1)
+    for _ in range(n_general):
+        groups.add(wchoice(rng, GENERAL_ORGS))
+    return sorted(groups)
+
+
+def make_hackathons(rng, year_label, school):
+    """Prior events. Older students have been to more; southeast schools skew
+    to the southeast circuit."""
+    caps = {"Freshman": (0, 1), "Sophomore": (0, 2), "Junior": (1, 3),
+            "Senior": (1, 4), "Master's": (1, 4), "PhD": (0, 3)}
+    lo, hi = caps.get(year_label, (0, 2))
+    regional = SOUTHEAST_HACKATHONS if school in SOUTHEAST else NATIONAL_HACKATHONS
+    other = NATIONAL_HACKATHONS if school in SOUTHEAST else SOUTHEAST_HACKATHONS
+    out = set()
+    for _ in range(rng.randint(lo, hi)):
+        pool = regional if rng.random() < 0.75 else other
+        out.add(rng.choice(pool))
+    return sorted(out)
+
+
+def make_involvement(rng, arch_key):
+    """Campus life outside code. Research and TA-ships skew academic archetypes."""
+    out = set()
+    for _ in range(rng.choices([0, 1, 2, 3], weights=[18, 40, 30, 12])[0]):
+        out.add(wchoice(rng, INVOLVEMENT))
+    if arch_key in ("ml_research", "bio_health", "climate_social") and rng.random() < 0.35:
+        out.add("Undergraduate Research")
+    return sorted(out)
 
 
 def make_internships(rng, arch, year_label):
@@ -354,12 +443,28 @@ def build_teams(rng, people):
 
 
 def build_friends(rng, people):
-    """Realistic social graph: teammates, same-school, same-interest, plus random weak ties."""
+    """Realistic social graph: teammates, same-school, same-interest, shared
+    club at the same school, plus random weak ties.
+
+    Note for anyone quoting model metrics: club co-membership, hackathon
+    co-attendance and shared campus involvement are all real edge generators
+    here, the way they are on an actual campus. That means those features are
+    predictive partly BY CONSTRUCTION, and scores on this dataset are NOT
+    comparable to scores from a version with a different generator. Compare a
+    model against the baselines on the same generated data, never across
+    generator versions.
+    """
     by_id = {p["id"]: p for p in people}
-    by_school, by_arch = {}, {}
+    by_school, by_arch, by_club, by_hack, by_involve = {}, {}, {}, {}, {}
     for p in people:
         by_school.setdefault(p["school"], []).append(p["id"])
         by_arch.setdefault(p["latent_archetype"], []).append(p["id"])
+        for g in p.get("dev_groups", []):
+            by_club.setdefault((p["school"], g), []).append(p["id"])
+        for h in p.get("hackathons", []):
+            by_hack.setdefault(h, []).append(p["id"])
+        for v in p.get("involvement", []):
+            by_involve.setdefault((p["school"], v), []).append(p["id"])
     adj = {p["id"]: set() for p in people}
 
     def link(a, b):
@@ -371,6 +476,25 @@ def build_friends(rng, people):
         for t in p["teammates"]:
             if rng.random() < 0.85:
                 link(p["id"], t)
+        # People you know from a club you both actually attend.
+        for g in p.get("dev_groups", []):
+            mates = by_club.get((p["school"], g), [])
+            for other in rng.sample(mates, min(len(mates), rng.randint(1, 4))):
+                if rng.random() < 0.55:
+                    link(p["id"], other)
+        # People you met at a past hackathon - cross-school by nature, which is
+        # what makes this signal interesting rather than a proxy for `school`.
+        for h in p.get("hackathons", []):
+            attendees = by_hack.get(h, [])
+            for other in rng.sample(attendees, min(len(attendees), rng.randint(1, 3))):
+                if rng.random() < 0.20:
+                    link(p["id"], other)
+        # Campus life outside code: same org, same campus.
+        for v in p.get("involvement", []):
+            mates = by_involve.get((p["school"], v), [])
+            for other in rng.sample(mates, min(len(mates), rng.randint(1, 3))):
+                if rng.random() < 0.30:
+                    link(p["id"], other)
         for _ in range(rng.randint(2, 8)):
             r = rng.random()
             if r < 0.50:
@@ -421,6 +545,9 @@ def generate(n, seed):
             "gpa_band": rng.choices(["<3.0", "3.0-3.4", "3.5-3.79", "3.8+"], weights=[3, 20, 40, 37])[0],
             "internships": make_internships(rng, arch, year),
             "skills": rng.sample(arch["skills"], rng.randint(3, 5)),
+            "dev_groups": make_dev_groups(rng, arch_key, year),
+            "hackathons": make_hackathons(rng, year, school),
+            "involvement": make_involvement(rng, arch_key),
             "answers": make_answers(rng, arch),
             "team_id": None,
             "teammates": [],

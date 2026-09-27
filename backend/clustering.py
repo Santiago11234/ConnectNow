@@ -95,6 +95,113 @@ def _get_bridge_scores(
     return np.clip(scores, 0.0, 1.0)
 
 
+# Skills come from a controlled 61-item vocabulary, so they group cleanly into
+# themes. LLM-extracted `interest_tags` do not: 451 distinct tags across 400
+# people means nearly every tag is near-unique, and ranking them by lift just
+# surfaces one-offs ("ebpf", "kicad", "food waste") that describe nobody.
+SKILL_THEMES: dict[str, str] = {
+    "PyTorch": "ML/AI", "TensorFlow": "ML/AI", "JAX": "ML/AI", "CUDA": "ML/AI",
+    "scikit-learn": "ML/AI", "Hugging Face": "ML/AI",
+    "TypeScript": "Web dev", "React": "Web dev", "Next.js": "Web dev",
+    "Node.js": "Web dev", "Tailwind": "Web dev", "HTML/CSS": "Web dev",
+    "PostgreSQL": "Web dev", "Firebase": "Web dev",
+    "Swift": "Mobile", "SwiftUI": "Mobile", "Kotlin": "Mobile",
+    "Flutter": "Mobile", "React Native": "Mobile",
+    "Arduino": "Hardware", "Raspberry Pi": "Hardware", "KiCad": "Hardware",
+    "Verilog": "Hardware", "C": "Hardware",
+    "ROS": "Robotics", "OpenCV": "Robotics", "SolidWorks": "Robotics", "MATLAB": "Robotics",
+    "Rust": "Systems", "Go": "Systems", "Kubernetes": "Systems",
+    "gRPC": "Systems", "Solidity": "Systems", "Linux": "Systems", "C++": "Systems",
+    "Burp Suite": "Security", "Ghidra": "Security", "Wireshark": "Security",
+    "Unity": "Games", "Unreal Engine": "Games", "Blender": "Games",
+    "Three.js": "Games", "GLSL": "Games", "C#": "Games",
+    "Figma": "Design", "Framer": "Design", "Adobe Suite": "Design",
+    "User Research": "Design", "Prototyping": "Design",
+    "NumPy": "Data", "pandas": "Data", "SQL": "Data", "R": "Data",
+    "Spark": "Data", "dbt": "Data", "Tableau": "Data", "D3.js": "Data",
+    "GIS": "Geo/Civic", "Leaflet": "Geo/Civic",
+    "Biopython": "Bio/Health",
+}
+
+# A theme must clear this share of a cluster before it names it.
+_THEME_FLOOR_FRAC = 0.10
+# Above this, the cluster really is "that school".
+_SCHOOL_DOMINANT = 0.45
+# ...and a theme must actually SET THE CLUSTER APART before it goes in the
+# name. The big single-school clusters contain every topic in roughly
+# population proportion (lift 0.6-1.4, nothing above 16% share); picking the
+# argmax there produces a confident label for a group that has no topic
+# identity at all. Better to just call it by its school.
+_THEME_MIN_LIFT = 1.35
+_THEME_MIN_SHARE = 0.18
+
+
+def _derive_cluster_labels(
+    participants: list[dict], cluster_ids: np.ndarray
+) -> dict[str, str]:
+    """Name each cluster from what it actually contains: its dominant school
+    and its most over-represented skill theme.
+
+    These clusters are school-shaped in practice (school explains them far
+    better than topic does), so a label describing only "technical focus" is
+    not a loose fit - it is wrong, and it invites someone to click in and find
+    every archetype sitting there together.
+    """
+    import math
+    from collections import Counter
+
+    def themes(p: dict) -> list[str]:
+        return [SKILL_THEMES[s] for s in p.get("skills", []) if s in SKILL_THEMES]
+
+    overall = Counter(t for p in participants for t in themes(p))
+    total = sum(overall.values()) or 1
+
+    labels: dict[str, str] = {}
+    used: set[str] = set()
+    for cid in sorted(set(int(c) for c in cluster_ids)):
+        members = [participants[i] for i in range(len(participants)) if int(cluster_ids[i]) == cid]
+        if not members:
+            continue
+
+        schools = Counter(p.get("school", "") for p in members)
+        school, school_n = schools.most_common(1)[0]
+        share = school_n / len(members)
+
+        counts = Counter(t for p in members for t in themes(p))
+        in_cluster = sum(counts.values()) or 1
+        floor = max(3, int(_THEME_FLOOR_FRAC * len(members)))
+        # Lift, damped by sqrt(count): raw lift crowns whatever is rarest
+        # overall, which is never a good name for a group of 50 people.
+        def lift(t: str) -> float:
+            return (counts[t] / in_cluster) / (overall[t] / total)
+
+        ranked = sorted(
+            (
+                t
+                for t in counts
+                if counts[t] >= floor
+                and lift(t) >= _THEME_MIN_LIFT
+                and counts[t] / in_cluster >= _THEME_MIN_SHARE
+            ),
+            key=lambda t: lift(t) * math.sqrt(counts[t]),
+            reverse=True,
+        )
+        theme = ranked[0] if ranked else None
+
+        if share >= _SCHOOL_DOMINANT and school:
+            label = f"{school} · {theme}" if theme else school
+        elif theme:
+            label = f"{theme} · mixed schools"
+        else:
+            label = school or f"Group {cid + 1}"
+
+        if label in used:
+            label = f"{label} {cid + 1}"
+        used.add(label)
+        labels[str(cid)] = label
+    return labels
+
+
 def _generate_cluster_labels(
     participants: list[dict], cluster_ids: np.ndarray, client
 ) -> dict[str, str]:
@@ -165,7 +272,7 @@ def _generate_cluster_labels(
         return labels
     except Exception as e:
         print(f"Cluster label generation failed: {e}")
-        return {str(i): f"Group {i + 1}" for i in range(n_clusters)}
+        return _fallback_cluster_labels(participants, cluster_ids)
 
 
 def compute_layout(
@@ -197,15 +304,11 @@ def compute_layout(
     bridge_scores = _get_bridge_scores(composite_matrix, cluster_ids)
     print(f"  Done in {time.time() - t0:.2f}s")
 
-    cluster_labels: dict[str, str] = {}
-    if client:
-        try:
-            cluster_labels = _generate_cluster_labels(participants, cluster_ids, client)
-        except Exception as e:
-            print(f"Cluster labels failed: {e}")
-
-    if not cluster_labels:
-        cluster_labels = {str(i): f"Group {i + 1}" for i in range(n_clusters)}
+    # Derived from the members themselves, not written by the LLM. The LLM was
+    # only ever shown skills and tags, which explain ~7% of how these clusters
+    # actually form, so it confabulated plausible "technical focus" names for
+    # groups that are really schools.
+    cluster_labels = _derive_cluster_labels(participants, cluster_ids)
 
     return {
         "order": order,
