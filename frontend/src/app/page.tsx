@@ -1,16 +1,14 @@
 'use client'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { api, type MatrixData, type LayoutData, type Participant } from '@/lib/api'
-import { combineMatrices, decodeMatrix } from '@/lib/matrix'
-import { Heatmap } from '@/components/Heatmap'
+import { decodeMatrix } from '@/lib/matrix'
 import { Constellation } from '@/components/Constellation'
 import { WeightSliders } from '@/components/WeightSliders'
 import { RightSidebar } from '@/components/RightSidebar'
 import { CommandPalette } from '@/components/CommandPalette'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 
-type Tab = 'heatmap' | 'constellation' | 'findpeople' | 'bridges'
-type Mode = 'similar' | 'serendipity'
+type Tab = 'constellation' | 'findpeople' | 'bridges'
 
 export interface SelectedPair {
   idA: string
@@ -27,8 +25,7 @@ export default function Workspace() {
     university: 0.20, grade: 0.10, internships: 0.20, interests: 0.35, network: 0.15,
   })
   const [decoded, setDecoded] = useState<Record<string, Float32Array[]>>({})
-  const [mode, setMode] = useState<Mode>('similar')
-  const [tab, setTab] = useState<Tab>('heatmap')
+  const [tab, setTab] = useState<Tab>('constellation')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [healthStatus, setHealthStatus] = useState<string>('connecting')
@@ -87,34 +84,6 @@ export default function Workspace() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
-
-  const composite = useMemo(() => {
-    if (Object.keys(decoded).length === 0) return []
-    const combined = combineMatrices(decoded, weights)
-    if (mode === 'serendipity') {
-      const interestMat = decoded['interests'] ?? combined
-      const networkMat = decoded['network'] ?? combined
-      const n = interestMat.length
-      return Array.from({ length: n }, (_, i) => {
-        const row = new Float32Array(n)
-        for (let j = 0; j < n; j++) {
-          row[j] = Math.max(0, (interestMat[i]?.[j] ?? 0) - (networkMat[i]?.[j] ?? 0))
-        }
-        return row
-      })
-    }
-    return combined
-  }, [decoded, weights, mode])
-
-  const handleCellClick = useCallback((idxA: number, idxB: number) => {
-    if (!matrixData) return
-    const pa = matrixData.participants[idxA]
-    const pb = matrixData.participants[idxB]
-    if (pa && pb) {
-      setSelectedPair({ idA: pa.id, idB: pb.id, nameA: pa.name, nameB: pb.name })
-      if (!rightOpen) setRightOpen(true)
-    }
-  }, [matrixData, rightOpen])
 
   const handlePersonSelect = useCallback((id: string) => {
     setSelectedPerson(id)
@@ -191,7 +160,7 @@ export default function Workspace() {
           </aside>
           <main className="center-pane">
             <div className="tab-bar">
-              {(['Heat map', 'Constellation', 'Find my people', 'Bridges'] as const).map(label => (
+              {(['Constellation', 'Find my people', 'Bridges'] as const).map(label => (
                 <span key={label} className="tab-item" style={{ color: 'var(--text-faint)' }}>{label}</span>
               ))}
             </div>
@@ -269,20 +238,6 @@ export default function Workspace() {
               <WeightSliders weights={weights} onChange={setWeights} />
             </div>
 
-            {/* Mode */}
-            <div className="sidebar-section">
-              <div className="section-label">Mode</div>
-              <div className="mode-toggle">
-                <button
-                  className={`mode-toggle-btn ${mode === 'similar' ? 'active' : ''}`}
-                  onClick={() => setMode('similar')}
-                >Similar</button>
-                <button
-                  className={`mode-toggle-btn ${mode === 'serendipity' ? 'active' : ''}`}
-                  onClick={() => setMode('serendipity')}
-                >Serendipity</button>
-              </div>
-            </div>
           </div>
         </aside>
 
@@ -301,14 +256,13 @@ export default function Workspace() {
         {/* Center pane */}
         <main className="center-pane">
           <div className="tab-bar">
-            {(['heatmap', 'constellation', 'findpeople', 'bridges'] as Tab[]).map(t => (
+            {(['constellation', 'findpeople', 'bridges'] as Tab[]).map(t => (
               <button
                 key={t}
                 className={`tab-item ${tab === t ? 'active' : ''}`}
                 onClick={() => setTab(t)}
               >
-                {t === 'heatmap' ? 'Heat map' :
-                 t === 'constellation' ? 'Constellation' :
+                {t === 'constellation' ? 'Constellation' :
                  t === 'findpeople' ? 'Find my people' :
                  'Bridges'}
               </button>
@@ -324,16 +278,6 @@ export default function Workspace() {
           </div>
 
           <div className="pane-content">
-            {tab === 'heatmap' && matrixData && layout && (
-              <Heatmap
-                compositeMatrix={composite}
-                order={layout.order}
-                participants={matrixData.participants}
-                clusterIds={layout.cluster_ids}
-                clusterLabels={layout.cluster_labels}
-                onCellClick={handleCellClick}
-              />
-            )}
             {tab === 'constellation' && layout && (
               <Constellation
                 layout={layout}
@@ -399,7 +343,6 @@ export default function Workspace() {
       <div className="status-bar">
         <span>{participantCount > 0 ? `${participantCount} participants` : 'loading'}</span>
         <span>{selectedPair ? `${selectedPair.nameA} × ${selectedPair.nameB}` : selectedPersonData?.name ?? 'no selection'}</span>
-        <span>mode: {mode}</span>
         <span style={{ color: healthStatus === 'connected' ? 'var(--accent)' : healthStatus === 'offline' ? 'var(--danger)' : 'var(--text-faint)' }}>
           backend: {healthStatus}
         </span>
@@ -409,7 +352,7 @@ export default function Workspace() {
       {palOpen && (
         <CommandPalette
           participants={matrixData?.participants ?? []}
-          tabs={['heatmap', 'constellation', 'findpeople', 'bridges']}
+          tabs={['constellation', 'findpeople', 'bridges']}
           onSelectPerson={id => {
             handlePersonSelect(id)
             setPalOpen(false)
