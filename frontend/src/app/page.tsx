@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { api, type MatrixData, type LayoutData, type Participant } from '@/lib/api'
 import { decodeMatrix } from '@/lib/matrix'
 import { NO_FILTERS, passesFilters, topMatches, type Filters, type Mode, type PersonMeta } from '@/lib/scoring'
+import { currentUserIndex } from '@/lib/session'
 import { TopBar, TAB_LABELS, type Tab } from '@/components/TopBar'
 import { ControlPanel } from '@/components/ControlPanel'
 import { Constellation } from '@/components/Constellation'
@@ -49,8 +50,14 @@ export default function Workspace() {
   const visible = useMemo(() => meta.map(m => passesFilters(m, filters)), [meta, filters])
   const shownCount = useMemo(() => visible.filter(Boolean).length, [visible])
 
-  const matches = useMemo(() => (data && selected >= 0
-    ? topMatches(selected, data.decoded, weights, mode, meta, visible, 5) : []), [data, selected, weights, mode, meta, visible])
+  // Matches are private. Selecting someone else in the constellation shows
+  // their public profile only - their ranked matches are theirs to see, not
+  // something any visitor can read off the map.
+  const meIdx = useMemo(() => currentUserIndex(data?.people ?? []), [data])
+  const ownProfile = selected >= 0 && selected === meIdx
+
+  const matches = useMemo(() => (data && ownProfile
+    ? topMatches(selected, data.decoded, weights, mode, meta, visible, 5) : []), [data, ownProfile, selected, weights, mode, meta, visible])
 
   const selectById = useCallback((id: string) => {
     const idx = data?.people.findIndex(p => p.id === id) ?? -1
@@ -102,7 +109,7 @@ export default function Workspace() {
             )}
             {data && tab === 'constellation' && (
               <Constellation layout={data.layout} visible={visible} selectedIdx={selected}
-                matchIdxs={matches.map(m => m.idx)} onSelect={selectById} />
+                meIdx={meIdx} matchIdxs={matches.map(m => m.idx)} onSelect={selectById} />
             )}
             {data && tab === 'findpeople' && (
               <FindMyPeople people={data.people} meta={meta} visible={visible} decoded={data.decoded}
@@ -125,6 +132,7 @@ export default function Workspace() {
               </>
             ) : person && data ? (
               <ParticipantPanel person={person} matches={matches} people={data.people} activeIdx={activeMatch}
+                matchesPrivate={!ownProfile}
                 onActive={setActiveMatch} mode={mode} shortlist={shortlist}
                 onShortlist={id => setShortlist(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })}
                 onFullExplanation={otherId => { const b = data.people.findIndex(p => p.id === otherId); openPair(selected, b) }} />

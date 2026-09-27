@@ -13,11 +13,14 @@ interface Props {
   shortlist: Set<string>
   onShortlist: (id: string) => void
   onFullExplanation: (otherId: string) => void
+  /** True when viewing someone other than the signed-in user, whose ranked
+   *  matches are not ours to display. */
+  matchesPrivate?: boolean
 }
 
 const MODE_LABEL: Record<Mode, string> = { similar: 'Top matches', complementary: 'Complementary teammates', serendipity: 'Serendipitous strangers' }
 
-export function ParticipantPanel({ person, matches, people, activeIdx, onActive, mode, shortlist, onShortlist, onFullExplanation }: Props) {
+export function ParticipantPanel({ person, matches, people, activeIdx, onActive, mode, shortlist, onShortlist, onFullExplanation, matchesPrivate }: Props) {
   const tags = person.interest_tags.length ? person.interest_tags : person.skills
   const active = matches.find(m => m.idx === activeIdx) ?? matches[0]
   const activePerson = active ? people[active.idx] : undefined
@@ -39,6 +42,15 @@ export function ParticipantPanel({ person, matches, people, activeIdx, onActive,
       )}
 
       <div className="divider" />
+      {matchesPrivate ? (
+        <>
+          <div className="section-label">Matches</div>
+          <div className="faint private-note">
+            Private to {person.name.split(' ')[0]}. You can only see your own matches.
+          </div>
+        </>
+      ) : (
+      <>
       <div className="section-label">{MODE_LABEL[mode]}</div>
       {matches.length === 0 && <div className="empty-state" style={{ height: 40 }}>No matches under current filters</div>}
       <ul className="match-list">
@@ -70,6 +82,8 @@ export function ParticipantPanel({ person, matches, people, activeIdx, onActive,
             onFullExplanation={() => onFullExplanation(activePerson.id)}
           />
         </>
+      )}
+      </>
       )}
     </div>
   )

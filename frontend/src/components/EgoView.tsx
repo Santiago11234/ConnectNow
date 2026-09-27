@@ -13,6 +13,7 @@ interface Props {
   activeIdx: number
   visible: boolean[]
   decoded: Record<string, Float32Array[]>
+  sentIds: Set<string>
   onSelect: (idx: number) => void
   onHover: (idx: number) => void
 }
@@ -25,7 +26,7 @@ const NODE = '#ffffff'
 const RIM = 'rgba(225,228,240,0.7)'
 const HAIR = 'rgba(225,228,240,0.16)'
 
-export function EgoView({ meIdx, people, matches, weights, activeIdx, visible, decoded, onSelect, onHover }: Props) {
+export function EgoView({ meIdx, people, matches, weights, activeIdx, visible, decoded, sentIds, onSelect, onHover }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -160,6 +161,16 @@ export function EgoView({ meIdx, people, matches, weights, activeIdx, visible, d
         ctx.arc(cx + n.x, cy + n.y, n.r + 5, 0, Math.PI * 2)
         ctx.stroke()
       }
+      // Already reached out to - accent ring, the one place accent is used
+      // on this canvas so it reads as "you did something here".
+      if (sentIds.has(n.person.id)) {
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = '#8b72f0'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.arc(cx + n.x, cy + n.y, n.r + 5, 0, Math.PI * 2)
+        ctx.stroke()
+      }
     }
     ctx.globalAlpha = 1
     ctx.shadowBlur = 0
@@ -185,7 +196,7 @@ export function EgoView({ meIdx, people, matches, weights, activeIdx, visible, d
     ctx.font = '11px Inter, system-ui, sans-serif'
     ctx.fillStyle = 'rgba(225,228,240,0.6)'
     ctx.fillText('you', cx, cy + 48)
-  }, [layout, size, people, meIdx, activeIdx, rInner, rOuter])
+  }, [layout, size, people, meIdx, activeIdx, rInner, rOuter, sentIds])
 
   return (
     <div className="ego-wrap" ref={wrapRef}>

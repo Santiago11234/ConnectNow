@@ -77,6 +77,10 @@ export interface SkyScene {
   matches: number[]
   hover: number
   selectedName: string
+  /** Index of the signed-in user, or -1. Marked so you can always find
+   *  yourself on the map without hunting. */
+  meIdx: number
+  meName: string
 }
 
 export type Project = (i: number) => [number, number]
@@ -132,7 +136,38 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: SkyScene, project: P
   ctx.globalAlpha = 1
 
   drawClusterLabels(ctx, s, project)
-  if (s.selected >= 0) drawSelection(ctx, s, project)
+  if (s.meIdx >= 0) drawYou(ctx, s, project)
+  if (s.selected >= 0 && s.selected !== s.meIdx) drawSelection(ctx, s, project)
+}
+
+/** The signed-in user's own star: accent ring plus a standing label, so it
+ *  stays findable whether or not anything is selected. Accent is reserved for
+ *  this and for selection, so it never competes with the cluster hues. */
+function drawYou(ctx: CanvasRenderingContext2D, s: SkyScene, project: Project) {
+  const [x, y] = project(s.meIdx)
+  ctx.save()
+  ctx.shadowColor = '#8b72f0'
+  ctx.shadowBlur = 20
+  ctx.fillStyle = '#ffffff'
+  ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill()
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = '#8b72f0'
+  ctx.lineWidth = 1.4
+  ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.stroke()
+  ctx.strokeStyle = 'rgba(139,114,240,0.35)'
+  ctx.lineWidth = 1
+  ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.stroke()
+
+  ctx.textAlign = 'center'
+  ctx.font = '500 11px Inter, system-ui, sans-serif'
+  ctx.letterSpacing = '0.14em'
+  ctx.fillStyle = '#b9a8ff'
+  ctx.fillText('YOU', x, y - 26)
+  ctx.letterSpacing = '0px'
+  ctx.font = '500 12px Inter, system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(225,228,240,0.85)'
+  ctx.fillText(s.meName, x, y + 32)
+  ctx.restore()
 }
 
 function drawClusterLabels(ctx: CanvasRenderingContext2D, s: SkyScene, project: Project) {
