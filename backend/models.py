@@ -16,6 +16,9 @@ class Participant(SQLModel, table=True):
     # JSON-encoded fields
     internships_json: str = Field(default="[]")
     skills_json: str = Field(default="[]")
+    dev_groups_json: str = Field(default="[]")
+    hackathons_json: str = Field(default="[]")
+    involvement_json: str = Field(default="[]")
     answers_json: str = Field(default="{}")
     teammates_json: str = Field(default="[]")
     friends_json: str = Field(default="[]")
@@ -35,6 +38,9 @@ class ParticipantPublic(SQLModel):
     is_synthetic: bool = False
     internships: list[dict] = []
     skills: list[str] = []
+    dev_groups: list[str] = []
+    hackathons: list[str] = []
+    involvement: list[str] = []
     answers: dict = {}
     teammates: list[str] = []
     friends: list[str] = []
@@ -50,6 +56,9 @@ class ParticipantCreate(SQLModel):
     grad_year: int
     internships: list[dict] = []
     skills: list[str] = []
+    dev_groups: list[str] = []
+    hackathons: list[str] = []
+    involvement: list[str] = []
     answers: dict = {}
     teammates: list[str] = []
     friends: list[str] = []

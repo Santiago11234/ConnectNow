@@ -6,9 +6,13 @@ from pathlib import Path
 CACHE_DIR = Path(__file__).parent.parent / "data" / "cache"
 
 
+# Bump when the prompt or phrasing changes, so old cached prose is not reused.
+_PROMPT_VERSION = "v2-second-person"
+
+
 def _pair_cache_key(id_a: str, id_b: str) -> str:
     pair = tuple(sorted([id_a, id_b]))
-    return hashlib.sha256(str(pair).encode()).hexdigest()[:16]
+    return hashlib.sha256((str(pair) + _PROMPT_VERSION).encode()).hexdigest()[:16]
 
 
 def _shared_facts(a: dict, b: dict) -> list[str]:
@@ -24,6 +28,15 @@ def _shared_facts(a: dict, b: dict) -> list[str]:
     for ind in inds_a & inds_b:
         if ind:
             facts.append(f"Both worked in {ind}")
+    same_school = a["school"] == b["school"]
+    for g in sorted(set(a.get("dev_groups", [])) & set(b.get("dev_groups", []))):
+        facts.append(
+            f"Both in {g} at {a['school']}" if same_school else f"Both in {g} (different schools)"
+        )
+    for h in sorted(set(a.get("hackathons", [])) & set(b.get("hackathons", [])))[:2]:
+        facts.append(f"Both attended {h}")
+    for v in sorted(set(a.get("involvement", [])) & set(b.get("involvement", [])))[:2]:
+        facts.append(f"Both do {v}")
     tags_a = set(a.get("interest_tags", []))
     tags_b = set(b.get("interest_tags", []))
     for tag in list(tags_a & tags_b)[:3]:
@@ -62,6 +75,12 @@ def explain_pair(
             lines.append(f"Internships: {', '.join(companies)}")
         if p.get("skills"):
             lines.append(f"Skills: {', '.join(p['skills'][:5])}")
+        if p.get("dev_groups"):
+            lines.append(f"Student orgs: {', '.join(p['dev_groups'])}")
+        if p.get("hackathons"):
+            lines.append(f"Past hackathons: {', '.join(p['hackathons'][:4])}")
+        if p.get("involvement"):
+            lines.append(f"Campus involvement: {', '.join(p['involvement'][:4])}")
         if p.get("interest_tags"):
             lines.append(f"Interests: {', '.join(p['interest_tags'][:6])}")
         for key, val in p.get("answers", {}).items():
@@ -72,21 +91,48 @@ def explain_pair(
 
     feature_text = ", ".join(f"{k}: {v:.2f}" for k, v in feature_scores.items())
 
+    # The reader is the signed-in participant looking at their own matches, so
+    # address them directly rather than narrating about them in third person.
+    from session import CURRENT_USER_ID
+
+    if a["id"] == CURRENT_USER_ID:
+        you, them = a, b
+    elif b["id"] == CURRENT_USER_ID:
+        you, them = b, a
+    else:
+        you, them = None, None
+
+    if you is not None and them is not None:
+        voice = (
+            f"You are writing TO {you['name']} about {them['name']}. Use the second "
+            f"person throughout: start with \"You and {them['name']}\" or \"You both\", "
+            f"and never refer to {you['name']} by name or in the third person. "
+            f"Address the icebreaker to {you['name']} as something to ask "
+            f"{them['name']}."
+        )
+    else:
+        voice = "Write in the third person about both people."
+
     prompt = (
         f"Two hackathon participants have a similarity score of {composite_score:.2f}/1.0.\n\n"
         f"Feature scores: {feature_text}\n"
         f"Shared facts: {', '.join(shared_facts) if shared_facts else 'None found'}\n\n"
         f"Person A:\n{profile_summary(a)}\n\n"
         f"Person B:\n{profile_summary(b)}\n\n"
-        f"Write a 2-3 sentence explanation of why these two people would connect well, "
-        f"citing ONLY concrete facts from their profiles above. Do NOT invent details.\n"
+        f"{voice}\n"
+        f"Write a 2-3 sentence explanation of why these two would connect well, "
+        f"citing ONLY concrete facts from the profiles above. Do NOT invent details.\n"
         f"Also write one specific icebreaker question.\n\n"
         f'Return ONLY valid JSON: {{"explanation": "...", "icebreaker": "..."}}'
     )
 
-    explanation = (
-        f"{a['name']} and {b['name']} share strong similarities across multiple dimensions."
-    )
+    from session import CURRENT_USER_ID as _CUR
+    if a["id"] == _CUR:
+        explanation = f"You and {b['name']} match across several signals."
+    elif b["id"] == _CUR:
+        explanation = f"You and {a['name']} match across several signals."
+    else:
+        explanation = f"{a['name']} and {b['name']} match across several signals." 
     icebreaker = "What are you hoping to build this weekend?"
 
     try:

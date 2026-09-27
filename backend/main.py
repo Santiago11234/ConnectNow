@@ -17,7 +17,7 @@ load_dotenv(_REPO_ROOT / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from ingest import load_synthetic, participant_to_dict
+from ingest import load_seeds, load_synthetic, participant_to_dict
 from models import Participant, ParticipantCreate, ParticipantPublic
 import similarity
 import clustering
@@ -70,6 +70,9 @@ async def lifespan(app: FastAPI):
         n = load_synthetic(session, synthetic_path)
         if n > 0:
             print(f"Loaded {n} synthetic participants")
+        seeded = load_seeds(session, DATA_DIR / "seed_profiles.json")
+        if seeded > 0:
+            print(f"Loaded {seeded} seed profiles (hardcoded cohort)")
 
     with Session(engine) as session:
         db_participants = session.exec(select(Participant)).all()
@@ -163,6 +166,9 @@ def get_participants():
                 is_synthetic=p.get("is_synthetic", False),
                 internships=p.get("internships", []),
                 skills=p.get("skills", []),
+                dev_groups=p.get("dev_groups", []),
+                hackathons=p.get("hackathons", []),
+                involvement=p.get("involvement", []),
                 answers=p.get("answers", {}),
                 teammates=p.get("teammates", []),
                 friends=p.get("friends", []),
@@ -192,6 +198,9 @@ def create_participant(participant: ParticipantCreate):
             is_synthetic=False,
             internships_json=json.dumps(participant.internships),
             skills_json=json.dumps(participant.skills),
+            dev_groups_json=json.dumps(participant.dev_groups),
+            hackathons_json=json.dumps(participant.hackathons),
+            involvement_json=json.dumps(participant.involvement),
             answers_json=json.dumps(participant.answers),
             teammates_json=json.dumps(participant.teammates),
             friends_json=json.dumps(participant.friends),
@@ -210,6 +219,9 @@ def create_participant(participant: ParticipantCreate):
         is_synthetic=False,
         internships=participant.internships,
         skills=participant.skills,
+        dev_groups=participant.dev_groups,
+        hackathons=participant.hackathons,
+        involvement=participant.involvement,
         answers=participant.answers,
         teammates=participant.teammates,
         friends=participant.friends,
@@ -226,6 +238,22 @@ def get_matrix():
             name: similarity.quantize_to_uint8(mat) for name, mat in _matrices.items()
         },
         "weights": similarity.DEFAULT_WEIGHTS,
+    }
+
+
+@app.get("/model")
+def get_model_metrics():
+    """Evaluation for the learned link predictor. Everything here is scored on
+    friendships hidden from both message passing and the loss."""
+    import gnn
+
+    metrics = gnn.get_metrics()
+    if not metrics:
+        raise HTTPException(status_code=503, detail="Model not yet trained")
+    return {
+        "model": "GraphSAGE (2-layer, mean aggregation)",
+        "task": "link prediction on the participant friend graph",
+        **metrics,
     }
 
 
